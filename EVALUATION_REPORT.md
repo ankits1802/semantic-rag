@@ -47,15 +47,12 @@ This report evaluates the retrieval quality of two strategies on a 10-query benc
 ### Score Radar — Strategy A vs Strategy B
 
 ```mermaid
-radar
-    title Strategy A vs Strategy B — Key Retrieval Metrics
-    options
-        max: 1
-    axes MRR, "P@1", "P@5", "R@5", "nDCG@5", "AP@5"
-    curve "Strategy A"
-        0.55, 0.20, 0.58, 0.54, 0.63, 0.50
-    curve "Strategy B"
-        0.90, 0.80, 0.76, 0.72, 0.83, 0.73
+xychart-beta
+    title "Strategy A vs Strategy B — Key Retrieval Metrics"
+    x-axis ["MRR", "P@1", "P@5", "R@5", "nDCG@5", "AP@5"]
+    y-axis "Score" 0 --> 1
+    line "Strategy A" [0.55, 0.20, 0.58, 0.54, 0.63, 0.50]
+    line "Strategy B" [0.90, 0.80, 0.76, 0.72, 0.83, 0.73]
 ```
 
 ---
@@ -67,38 +64,39 @@ radar
 ```mermaid
 flowchart TD
     subgraph INGEST["Data Ingestion Pipeline"]
-        DOCS[("5 Source Documents\n.md · .txt · .json")] --> LOADER[DocumentLoader\nformat-aware parsing]
-        LOADER --> PREPROC[Preprocessor\nnormalise · clean]
-        PREPROC --> CHUNKER[ChunkingEngine\n512-char · 64-char overlap]
+        DOCS[("5 Source Documents\n.md · .txt · .json")] --> LOADER["DocumentLoader\nformat-aware parsing"]
+        LOADER --> PREPROC["Preprocessor\nnormalise · clean"]
+        PREPROC --> CHUNKER["ChunkingEngine\n512-char · 64-char overlap"]
         CHUNKER --> CHUNKS[("23 Text Chunks\nwith metadata")]
     end
 
     subgraph EMBED["Embedding & Indexing"]
-        CHUNKS --> EMBD[EmbeddingService\nall-MiniLM-L6-v2\ndim=384]
-        EMBD --> CACHE[SQLite\nEmbedding Cache\nSHA-256 keyed]
-        EMBD --> NORM[L2 Normalisation\n||v|| = 1]
-        NORM --> FAISS[FAISS IndexFlatIP\nexact cosine search]
-        CHUNKS --> BM25[BM25Okapi Index\ntokenised corpus]
+        CHUNKS --> EMBD["EmbeddingService\nall-MiniLM-L6-v2\ndim=384"]
+        EMBD --> CACHE["SQLite\nEmbedding Cache\nSHA-256 keyed"]
+        EMBD --> NORM["L2 Normalisation\n||v|| = 1"]
+        NORM --> FAISS["FAISS IndexFlatIP\nexact cosine search"]
+        CHUNKS --> BM25["BM25Okapi Index\ntokenised corpus"]
     end
 
     subgraph QUERY_A["Strategy A — Query Path"]
-        QA[User Query] --> EMB_A[Embed Query\nnormalised]
-        EMB_A --> SEARCH_A[FAISS\nInner Product Search]
-        SEARCH_A --> FILTER_A[Score Threshold\n≥ 0.25]
-        FILTER_A --> RESULT_A[Top-5 Results\n+ cosine scores]
+        QA["User Query"] --> EMB_A["Embed Query\nnormalised"]
+        EMB_A --> SEARCH_A["FAISS\nInner Product Search"]
+        SEARCH_A --> FILTER_A["Score Threshold\n≥ 0.25"]
+        FILTER_A --> RESULT_A["Top-5 Results\n+ cosine scores"]
     end
 
     subgraph QUERY_B["Strategy B — Query Path"]
-        QB[User Query] --> EXPAND[QueryExpansionEngine\ngemini-3.1-pro-preview\n3 variants]
-        EXPAND --> EMB_B[Embed each variant\n3× dense vectors]
-        EMB_B --> SEARCH_B[FAISS\nSearch × 3]
-        SEARCH_B --> BM25_B[BM25 Sparse\nSearch]
-        BM25_B --> RRF[Reciprocal Rank\nFusion k=60]
-        RRF --> RERANK[CrossEncoder\nms-marco-MiniLM]
-        RERANK --> RESULT_B[Top-5 Results\n+ reranked scores]
+        QB["User Query"] --> EXPAND["QueryExpansionEngine\ngemini-3.1-pro-preview\n3 variants"]
+        EXPAND --> EMB_B["Embed each variant\n3× dense vectors"]
+        EMB_B --> SEARCH_B["FAISS\nSearch × 3"]
+        SEARCH_B --> BM25_B["BM25 Sparse\nSearch"]
+        BM25_B --> RRF["Reciprocal Rank\nFusion k=60"]
+        RRF --> RERANK["CrossEncoder\nms-marco-MiniLM"]
+        RERANK --> RESULT_B["Top-5 Results\n+ reranked scores"]
     end
 
-    FAISS -.-> SEARCH_A & SEARCH_B
+    FAISS -.-> SEARCH_A
+    FAISS -.-> SEARCH_B
     BM25 -.-> BM25_B
 
     style INGEST fill:#e8f4f8,stroke:#4a90d9
