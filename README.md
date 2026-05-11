@@ -343,7 +343,9 @@ sequenceDiagram
 
 **RRF Formula:**
 
-$$\text{RRF\_score}(d) = \sum_{i=1}^{n} \frac{1}{k + \text{rank}_i(d)}, \quad k = 60$$
+$$
+\mathrm{RRF}(d) = \sum_{i=1}^{n} \frac{1}{k + \mathrm{rank}_i(d)}, \quad k = 60
+$$
 
 where $k=60$ is the smoothing constant from Cormack et al. (2009). A document that appears at rank 1 in one list and rank 10 in another gets a higher fused score than one that appears only at rank 3 in a single list.
 
