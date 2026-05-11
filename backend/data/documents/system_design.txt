@@ -1,0 +1,202 @@
+SYSTEM DESIGN AND SCALABILITY ENGINEERING
+==========================================
+
+SECTION 1: HORIZONTAL SCALING AND AUTOSCALING
+
+Horizontal scaling, also known as scaling out, is the process of adding more
+machines or instances to a system to handle increased load. Unlike vertical
+scaling (adding more CPU or RAM to a single machine), horizontal scaling
+provides near-linear throughput improvements and eliminates single points of
+failure.
+
+Autoscaling is the automated mechanism by which a system dynamically adjusts
+the number of running instances based on observed metrics such as CPU
+utilization, memory pressure, request queue depth, or custom application-level
+metrics. Modern cloud platforms including Google Cloud Run, AWS Auto Scaling
+Groups, and Kubernetes Horizontal Pod Autoscaler (HPA) implement autoscaling
+through control-loop algorithms that continuously compare the current state
+against a desired target state.
+
+A typical autoscaling policy defines:
+- A minimum number of instances to maintain baseline availability
+- A maximum number of instances to cap cost and prevent runaway scaling
+- Scale-up thresholds (e.g., CPU > 70% for 2 consecutive minutes)
+- Scale-down thresholds with cool-down periods to prevent thrashing
+- Predictive scaling based on historical traffic patterns
+
+During peak load periods and traffic spikes, autoscaling ensures that new
+instances are provisioned quickly enough to absorb the incoming concurrent
+requests. The provisioning latency (time from trigger to instance serving
+traffic) is a critical metric; cold-start latency must be minimized through
+warm pool configurations, pre-warming strategies, and lightweight container
+images.
+
+SECTION 2: LOAD BALANCING AND TRAFFIC DISTRIBUTION
+
+Load balancing is the process of distributing incoming network traffic across
+multiple backend servers to ensure no single server bears excessive load,
+maximizing throughput while minimizing response latency. Load balancers operate
+at different layers of the network stack:
+
+Layer 4 (Transport Layer) load balancers route TCP/UDP traffic based on IP
+address and port without inspecting packet payloads. They offer extremely low
+latency overhead (microseconds) but lack application-level context.
+
+Layer 7 (Application Layer) load balancers inspect HTTP headers, URLs, cookies,
+and request bodies to make intelligent routing decisions. They support:
+- Path-based routing (route /api/v1/* to one backend cluster)
+- Header-based routing for A/B testing and canary deployments
+- SSL/TLS termination
+- HTTP/2 and gRPC multiplexing
+- WebSocket sticky sessions
+
+Common load balancing algorithms include:
+- Round-robin: requests are distributed sequentially across available servers
+- Weighted round-robin: servers receive traffic proportional to their capacity
+- Least connections: routes to the server with fewest active connections
+- IP hash / consistent hashing: deterministic routing based on client IP
+- Random with two choices: samples two servers and routes to the less loaded
+
+Health checks are integral to load balancing. Active health checks probe
+backend instances at regular intervals; passive health checks observe real
+traffic response codes to detect unhealthy instances and remove them from the
+rotation automatically.
+
+SECTION 3: CACHING STRATEGIES AND CACHE INVALIDATION
+
+Caching stores frequently accessed or computationally expensive data in a fast
+storage tier (typically in-memory) to reduce database load, improve response
+times, and increase overall system throughput.
+
+In-Memory Cache (Redis / Memcached):
+Redis is a single-threaded, in-memory data structure store supporting strings,
+hashes, lists, sets, sorted sets, bitmaps, and streams. It supports:
+- Time-To-Live (TTL) based expiration
+- LRU (Least Recently Used) and LFU (Least Frequently Used) eviction policies
+- Pub/Sub messaging for cache invalidation broadcasts
+- Cluster mode with hash slot sharding for horizontal scalability
+- AOF (Append-Only File) and RDB snapshots for persistence
+
+Caching patterns:
+1. Cache-Aside (Lazy Loading): The application checks the cache before querying
+   the database. On a cache miss, data is fetched from the database and written
+   to the cache. Simple but can cause thundering herd on cold start.
+2. Write-Through: Every write goes to both cache and database simultaneously.
+   Ensures cache consistency but adds write latency.
+3. Write-Behind (Write-Back): Writes are made to the cache first; a background
+   process asynchronously syncs to the database. High throughput but risk of
+   data loss on cache failure.
+4. Read-Through: The cache itself is responsible for loading data from the
+   database on miss, transparent to the application.
+
+Cache invalidation is notoriously difficult. Strategies include:
+- TTL-based expiration (simple, may serve stale data)
+- Event-driven invalidation via message queues (consistent, complex)
+- Versioned cache keys (key includes data version hash)
+- Tag-based invalidation (invalidate all keys with a given tag)
+
+Multi-level caching (L1/L2/L3) mirrors CPU cache hierarchy:
+- L1: In-process memory cache (fastest, limited size, per-instance)
+- L2: Distributed in-memory cache (Redis cluster)
+- L3: CDN edge cache or persistent cache layer
+
+SECTION 4: RATE LIMITING AND THROTTLING
+
+Rate limiting controls the rate at which clients can make requests to a service,
+protecting against abuse, denial-of-service attacks, and resource exhaustion.
+
+Algorithms for rate limiting:
+1. Token Bucket: Each client has a bucket with a maximum capacity of N tokens.
+   Tokens are added at a fixed rate (e.g., 100/sec). Each request consumes one
+   or more tokens. Requests are rejected when the bucket is empty. Allows
+   short bursts up to bucket capacity.
+2. Leaky Bucket: Requests enter a queue and are processed at a fixed output
+   rate. Smooths traffic bursts but can cause queuing latency.
+3. Fixed Window Counter: Counts requests per fixed time window (e.g., per
+   minute). Simple but vulnerable to boundary burst attacks.
+4. Sliding Window Log: Maintains timestamps of all requests in the window.
+   Accurate but memory-intensive.
+5. Sliding Window Counter: Combines fixed window counters with linear
+   interpolation for accuracy without the memory cost of the log approach.
+
+Rate limiting can be applied at multiple granularities:
+- Per IP address (prevents simple DDoS)
+- Per user/API key (prevents quota abuse)
+- Per endpoint (protects expensive operations)
+- Per tenant (multi-tenant fairness)
+
+Distributed rate limiting requires a shared state store (Redis) to coordinate
+counters across multiple API gateway instances. The Lua scripting capability
+of Redis is commonly used to implement atomic check-and-increment operations.
+
+SECTION 5: CIRCUIT BREAKER PATTERN
+
+The circuit breaker pattern prevents cascading failures in distributed systems
+by wrapping calls to external services and monitoring for failures. When the
+failure rate exceeds a threshold, the circuit "opens" and subsequent calls
+fail immediately without attempting the remote call, allowing the downstream
+service time to recover.
+
+Circuit breaker states:
+- Closed: Requests pass through normally. Failures are counted.
+- Open: All requests fail immediately. A timer determines when to try again.
+- Half-Open: A limited number of test requests are allowed through. If they
+  succeed, the circuit closes; if they fail, it remains open.
+
+Parameters:
+- Failure threshold (e.g., 50% failure rate over 10 requests)
+- Timeout duration for state transition from open to half-open
+- Success threshold to transition from half-open to closed
+
+Libraries: Hystrix (Java), Polly (.NET), resilience4j (Java), pybreaker (Python)
+
+SECTION 6: DATABASE SCALABILITY
+
+Read replicas offload read traffic from the primary database. The primary handles
+all writes; replicas receive changes via replication logs. Applications direct
+read-heavy queries to replicas, reducing primary load.
+
+Connection pooling (PgBouncer, HikariCP) reduces the overhead of establishing
+new database connections. Pools maintain a set of pre-established connections
+that are shared among application threads.
+
+Database sharding partitions data across multiple database instances. Each shard
+holds a subset of rows determined by a shard key (e.g., user_id % N). Sharding
+increases write throughput but complicates cross-shard queries and transactions.
+
+CQRS (Command Query Responsibility Segregation) uses separate models for reads
+and writes, enabling independent optimization of each path. Paired with Event
+Sourcing, every state change is captured as an immutable event.
+
+SECTION 7: ASYNCHRONOUS PROCESSING AND MESSAGE QUEUES
+
+Decoupling producers from consumers through message queues improves system
+resilience and enables asynchronous processing of time-consuming tasks.
+
+Apache Kafka provides high-throughput, durable, ordered message streams with
+consumer groups for parallel processing. Kafka's partitioned log architecture
+supports millions of events per second.
+
+Google Cloud Pub/Sub offers a fully managed asynchronous messaging service with
+at-least-once delivery guarantees, push/pull subscription models, and dead
+letter topics for handling undeliverable messages.
+
+Task queues (Celery with Redis/RabbitMQ broker) enable background job processing,
+retry logic with exponential backoff, scheduled tasks (cron), and priority queues.
+
+SECTION 8: SERVICE MESH AND MICROSERVICES COMMUNICATION
+
+A service mesh (Istio, Linkerd) provides infrastructure-level concerns for
+microservice communication:
+- Mutual TLS (mTLS) for encrypted, authenticated service-to-service calls
+- Traffic management: load balancing, circuit breaking, retries, timeouts
+- Observability: distributed tracing, metrics, access logging
+- Policy enforcement: authorization, rate limiting
+
+Service discovery (Consul, etcd, Kubernetes Service DNS) allows services to
+locate each other without hardcoded IP addresses. Services register themselves
+at startup; clients query the registry to find healthy instances.
+
+API gateways (Kong, Apigee, AWS API Gateway) serve as the single entry point
+for external clients, handling authentication, rate limiting, request routing,
+protocol translation, and response aggregation.

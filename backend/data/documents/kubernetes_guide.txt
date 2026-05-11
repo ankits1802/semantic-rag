@@ -1,0 +1,161 @@
+KUBERNETES AND CONTAINER ORCHESTRATION
+========================================
+
+SECTION 1: KUBERNETES ARCHITECTURE
+
+Kubernetes (K8s) is an open-source container orchestration platform that
+automates deployment, scaling, and management of containerised workloads.
+The Kubernetes control plane consists of:
+
+API Server: The central management entity that exposes the Kubernetes API.
+All cluster operations (kubectl commands, controller actions, admission webhooks)
+pass through the API server. It validates and processes REST requests and
+persists state to etcd.
+
+etcd: A distributed key-value store that serves as Kubernetes' backing store
+for all cluster state — pod definitions, service configurations, secrets,
+config maps, and node registrations. etcd uses the Raft consensus protocol to
+maintain consistency across a three or five node cluster.
+
+Controller Manager: A collection of control loops (controllers) that watch the
+current state of the cluster via the API server and make changes to drive the
+actual state toward the desired state. Key controllers include the ReplicaSet
+controller, Deployment controller, StatefulSet controller, and Node controller.
+
+Scheduler: Assigns newly created pods to nodes based on resource requirements
+(CPU, memory, GPU), node selectors, affinity/anti-affinity rules, taints and
+tolerations, pod topology spread constraints, and node resource availability.
+The scheduler scores nodes using a multi-criteria weighted function.
+
+SECTION 2: WORKLOAD RESOURCES
+
+Pod: The smallest deployable unit in Kubernetes. A pod encapsulates one or
+more containers sharing a network namespace (same IP address), storage volumes,
+and lifecycle. Init containers run sequentially before app containers start;
+sidecar containers provide auxiliary capabilities (logging, proxying, secret
+injection).
+
+Deployment: Manages a ReplicaSet to ensure a specified number of pod replicas
+are running at all times. Deployments support rolling updates with configurable
+maxSurge and maxUnavailable parameters, enabling zero-downtime deployments.
+Rollback to previous revisions is supported via the revision history.
+
+StatefulSet: Manages stateful applications requiring stable network identities,
+persistent storage, and ordered deployment/scaling. Each pod receives a stable
+hostname (e.g., kafka-0, kafka-1) and a dedicated PersistentVolumeClaim.
+Used for databases, Kafka brokers, ZooKeeper ensembles, and Elasticsearch nodes.
+
+DaemonSet: Ensures one pod runs on every (or selected) node. Used for cluster-
+wide daemons such as log collectors (Fluentd), node monitoring agents (Prometheus
+Node Exporter), and network plugins (Calico, Cilium).
+
+CronJob: Schedules periodic tasks on a cron schedule. Manages Job creation
+and cleanup. Supports concurrencyPolicy (Allow/Forbid/Replace) to handle
+overlapping executions.
+
+Horizontal Pod Autoscaler (HPA): Automatically scales the number of pod replicas
+based on observed CPU/memory utilisation or custom metrics (via the Custom
+Metrics API). The HPA control loop runs every 15 seconds and computes desired
+replicas as: desiredReplicas = ceil(currentReplicas * currentMetric / targetMetric).
+
+Vertical Pod Autoscaler (VPA): Automatically adjusts CPU and memory resource
+requests based on historical usage. Works complementarily with HPA; VPA manages
+right-sizing, HPA manages replica count.
+
+KEDA (Kubernetes Event-Driven Autoscaling): Extends HPA to scale based on
+external event sources such as Kafka consumer lag, Redis queue depth, Azure
+Service Bus message count, HTTP request rate, and cloud vendor metrics.
+
+SECTION 3: NETWORKING AND SERVICE DISCOVERY
+
+Service: An abstract layer providing stable network access to a set of pods.
+Types include:
+- ClusterIP (default): Virtual IP accessible only within the cluster
+- NodePort: Exposes the service on each node's IP at a static port
+- LoadBalancer: Provisions a cloud provider load balancer with a public IP
+- ExternalName: Maps a service to a DNS name via CNAME
+
+CoreDNS: The DNS server for Kubernetes. Services are resolvable as
+<service>.<namespace>.svc.cluster.local. Individual pods can also be resolved
+by IP-based hostnames within headless services.
+
+Ingress: Manages external HTTP/HTTPS access to services. Ingress controllers
+(NGINX Ingress, Traefik, GKE Ingress, HAProxy Ingress) implement the Ingress
+specification and configure underlying load balancers with routing rules based
+on hostname, path prefix, and headers.
+
+Network Policies: Define pod-level firewall rules controlling which pods can
+communicate with each other and with external endpoints. Implemented by network
+plugins (Calico, Cilium, Weave Net) using iptables or eBPF.
+
+SECTION 4: STORAGE
+
+PersistentVolume (PV): A piece of storage provisioned by an administrator or
+dynamically via a StorageClass. Exists independently of pods.
+
+PersistentVolumeClaim (PVC): A request for storage by a pod, specifying size,
+access modes (ReadWriteOnce, ReadOnlyMany, ReadWriteMany), and StorageClass.
+
+StorageClass: Defines the provisioner (e.g., pd.csi.storage.gke.io for GCE
+Persistent Disk, csi.vsphere.volume for vSphere) and parameters for dynamic
+volume provisioning.
+
+Volume Types: emptyDir (ephemeral, per-pod), hostPath (mounts node filesystem),
+ConfigMap/Secret (inject configuration), NFS, CSI drivers for cloud storage.
+
+SECTION 5: SECURITY AND RBAC
+
+Role-Based Access Control (RBAC): Controls who can perform what actions on
+which Kubernetes resources. Key objects:
+- ClusterRole/Role: Defines a set of permissions (verbs: get, list, create,
+  update, delete, watch) on resource types
+- ClusterRoleBinding/RoleBinding: Binds a role to subjects (users, groups,
+  service accounts)
+
+Pod Security Admission: Enforces security standards (Privileged, Baseline,
+Restricted) at the namespace level, replacing deprecated PodSecurityPolicy.
+
+Secrets Management: Kubernetes Secrets store sensitive data (passwords, tokens,
+TLS certificates) base64-encoded. For production, integrate with external secrets
+managers: HashiCorp Vault, GCP Secret Manager, AWS Secrets Manager using the
+External Secrets Operator (ESO).
+
+Service Accounts: Pods authenticate to the Kubernetes API using service account
+tokens. Workload Identity (GKE) binds Kubernetes service accounts to GCP IAM
+service accounts, enabling keyless authentication to GCP APIs.
+
+SECTION 6: OBSERVABILITY ON KUBERNETES
+
+Prometheus and Grafana stack: Prometheus scrapes metrics endpoints (exposed via
+/metrics in OpenMetrics format) from pods annotated with
+prometheus.io/scrape: "true". AlertManager handles alert routing and
+deduplication. Grafana provides dashboards.
+
+Loki: Log aggregation system designed for Kubernetes. Agents (Promtail) collect
+pod logs from node filesystem paths and forward to Loki indexed by labels.
+Grafana queries Loki using LogQL, similar in syntax to PromQL.
+
+OpenTelemetry Collector: Vendor-neutral agent for receiving, processing, and
+exporting telemetry (metrics, logs, traces) from applications in multiple
+formats (OTLP, Jaeger, Zipkin, Prometheus) to multiple backends.
+
+SECTION 7: GITOPS AND CONTINUOUS DELIVERY
+
+GitOps treats the Git repository as the single source of truth for the desired
+cluster state. Operators such as Flux and Argo CD continuously sync cluster
+state with repository manifests.
+
+Argo CD: A declarative, GitOps continuous delivery tool for Kubernetes.
+Applications are defined as Argo CD Application objects specifying source
+(Git repo + path) and destination (cluster + namespace). Argo CD reconciles
+live cluster state with desired state, showing out-of-sync applications in its
+web UI.
+
+Helm: The Kubernetes package manager. Helm charts are parameterised templates
+for Kubernetes manifests. Charts are published to chart repositories; versions
+are managed via semantic versioning. Helm releases can be upgraded, rolled back,
+and diffed.
+
+Kustomize: A template-free Kubernetes manifest customisation tool built into
+kubectl. Base manifests are overlaid with environment-specific patches without
+duplication, enabling clean environment promotion (dev → staging → production).

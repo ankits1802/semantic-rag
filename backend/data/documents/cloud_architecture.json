@@ -1,0 +1,72 @@
+[
+  {
+    "id": "cloud_001",
+    "title": "Cloud-Native Architecture Principles",
+    "source": "cloud_architecture.json",
+    "section": "cloud_native",
+    "content": "Cloud-native architecture embraces microservices, containers, dynamic orchestration, and DevOps practices to build scalable, resilient applications. The twelve-factor app methodology provides foundational principles: codebase in version control, explicit dependency declaration, configuration in environment variables, backing services as attached resources, strict separation of build/release/run stages, stateless processes, port binding, horizontal scaling via process model, fast startup and graceful shutdown, dev/prod parity, structured logging to stdout, and admin processes as one-off tasks. Cloud-native applications are designed for the cloud execution model from the ground up rather than lifted-and-shifted from on-premises environments."
+  },
+  {
+    "id": "cloud_002",
+    "title": "Microservices Decomposition Patterns",
+    "source": "cloud_architecture.json",
+    "section": "microservices",
+    "content": "Microservices decompose a monolithic application into small, independently deployable services aligned with business capabilities. Decomposition strategies include: Decompose by Business Capability (each service owns a distinct business domain), Decompose by Subdomain (Domain-Driven Design bounded contexts), Strangler Fig Pattern (incrementally extract microservices from a monolith by routing traffic to new services). Each microservice owns its data store (Database per Service pattern), eliminating shared schema coupling. Inter-service communication uses synchronous REST or gRPC calls for request-response, and asynchronous messaging (Kafka, RabbitMQ) for event-driven workflows. Service contracts are defined via OpenAPI specifications or Protocol Buffers."
+  },
+  {
+    "id": "cloud_003",
+    "title": "Container Runtime and Image Optimisation",
+    "source": "cloud_architecture.json",
+    "section": "containers",
+    "content": "Docker containers package applications with their runtime dependencies into portable, immutable images. OCI (Open Container Initiative) specifications ensure container runtime interoperability across Docker, containerd, and CRI-O. Image optimisation techniques: multi-stage builds reduce final image size by discarding build-time dependencies; distroless base images eliminate shell and package manager overhead; layer caching in CI/CD pipelines speeds rebuild times; image scanning (Trivy, Snyk Container) detects vulnerabilities in base image packages. Container resource limits (CPU requests/limits, memory limits) prevent noisy-neighbour interference in multi-tenant Kubernetes clusters. cgroups v2 provides improved resource accounting and uniform hierarchical management."
+  },
+  {
+    "id": "cloud_004",
+    "title": "Serverless and Function-as-a-Service Architecture",
+    "source": "cloud_architecture.json",
+    "section": "serverless",
+    "content": "Serverless computing abstracts infrastructure management entirely; developers deploy functions or containers and the platform handles provisioning, scaling, and availability. Google Cloud Run executes stateless containers on demand, scaling from zero to thousands of instances within seconds based on HTTP request traffic. Cloud Functions (Python, Node.js, Go, Java) execute event-triggered code snippets in response to HTTP requests, Pub/Sub messages, Cloud Storage events, or Firestore changes. Cold start latency (100ms–3s depending on runtime and memory) is a key concern; mitigation strategies include minimum instance configuration, CPU boost on startup, and keeping functions warm via scheduled pings. Serverless is cost-efficient for irregular, spiky workloads (pay-per-invocation) but less suitable for sustained high-throughput workloads where long-running containers provide better amortised cost."
+  },
+  {
+    "id": "cloud_005",
+    "title": "API Gateway and Service Mesh Patterns",
+    "source": "cloud_architecture.json",
+    "section": "api_gateway",
+    "content": "An API gateway serves as the single entry point for all client requests, providing cross-cutting concerns: authentication and authorisation (OAuth 2.0, JWT validation, API key management), SSL/TLS termination, request routing and load balancing, request/response transformation, rate limiting and quota management, caching, circuit breaking, and observability (request logging, tracing header injection). Google Apigee, Kong, AWS API Gateway, and Envoy-based solutions like Ambassador provide these capabilities. A service mesh (Istio, Linkerd, Consul Connect) complements the API gateway by handling east-west (service-to-service) traffic, providing mTLS encryption, traffic management policies, and detailed telemetry without application code changes via sidecar proxy injection."
+  },
+  {
+    "id": "cloud_006",
+    "title": "Vertex AI and AI/ML Infrastructure on GCP",
+    "source": "cloud_architecture.json",
+    "section": "vertex_ai",
+    "content": "Vertex AI is Google Cloud's unified machine learning platform providing services across the full ML lifecycle. Vertex AI Embeddings API generates dense vector representations of text using Google's foundation models (textembedding-gecko, text-embedding-004), supporting up to 3072 dimensions. Vertex AI Matching Engine (now Vector Search) is a fully managed approximate nearest neighbour (ANN) service supporting billion-scale vector indices with single-digit millisecond query latency, automatic scaling, and integration with GCP IAM. Gemini models (gemini-1.5-pro, gemini-1.5-flash) are accessible via the Vertex AI Generative AI API for tasks including summarisation, question answering, code generation, reasoning, and function calling. Vertex AI Pipelines orchestrate ML workflows using Kubeflow Pipelines SDK with built-in lineage tracking, experiment management, and Cloud Storage artifact storage."
+  },
+  {
+    "id": "cloud_007",
+    "title": "Data Storage Patterns on GCP",
+    "source": "cloud_architecture.json",
+    "section": "storage",
+    "content": "Google Cloud Storage (GCS) provides globally durable object storage with multiple storage classes (Standard, Nearline, Coldline, Archive) for cost optimisation based on access frequency. BigQuery is a fully managed, serverless data warehouse optimised for analytical queries over petabyte-scale datasets using columnar storage and massively parallel query execution. Cloud Spanner provides globally distributed, strongly consistent relational database with 99.999% availability SLA, horizontal write scaling, and zero-downtime schema changes. Firestore is a NoSQL document database with real-time sync, offline support, and automatic multi-region replication. Cloud Bigtable offers sub-10ms latency for time-series, IoT, and high-throughput key-value workloads, used by Google Search, Maps, and Analytics internally."
+  },
+  {
+    "id": "cloud_008",
+    "title": "Pub/Sub and Event-Driven Architecture on GCP",
+    "source": "cloud_architecture.json",
+    "section": "messaging",
+    "content": "Google Cloud Pub/Sub is a globally distributed, asynchronous messaging service providing at-least-once delivery with configurable acknowledgement deadlines, dead letter queues, message filtering by attributes, and exactly-once delivery via Pub/Sub Lite. The fan-out pattern distributes a single published message to multiple subscriptions for independent processing. Eventarc routes events from GCP services (Cloud Storage, BigQuery, Firestore, Pub/Sub) to Cloud Run services, Cloud Functions, and GKE workloads using CloudEvents specification. Event-driven architectures decouple producers from consumers, enabling independent scaling, technology heterogeneity, and resilience through asynchronous buffering during consumer downtime."
+  },
+  {
+    "id": "cloud_009",
+    "title": "CI/CD Pipeline Architecture",
+    "source": "cloud_architecture.json",
+    "section": "cicd",
+    "content": "Continuous Integration and Continuous Delivery pipelines automate the path from code commit to production deployment. Google Cloud Build triggers builds on Git events, runs parallel test stages, builds and pushes Docker images to Artifact Registry, and deploys to Cloud Run or GKE using Cloud Deploy. Cloud Deploy manages progressive delivery to ordered deployment targets (dev → staging → production) with manual approval gates and automated rollback on deployment failure. Binary Authorisation enforces that only attestated, policy-compliant container images are deployable to production GKE clusters. Supply chain security is reinforced through SLSA (Supply Chain Levels for Software Artifacts) framework, signing build provenance with Sigstore/Cosign, and scanning dependencies with Artifact Analysis."
+  },
+  {
+    "id": "cloud_010",
+    "title": "Network Architecture and Security on GCP",
+    "source": "cloud_architecture.json",
+    "section": "networking",
+    "content": "Virtual Private Cloud (VPC) provides an isolated, globally spanning network for GCP resources. Shared VPC centralises network administration while delegating resource creation to service projects. VPC Service Controls create security perimeters around GCP API access, preventing data exfiltration even if credentials are compromised. Cloud Armor provides DDoS protection and WAF (Web Application Firewall) with OWASP ModSecurity Core Rule Set, rate limiting by IP or geographic region, and adaptive protection for ML-based attack detection. Private Service Connect enables private connectivity from consumer VPCs to producer services without traversing the public internet. Cloud NAT provides outbound internet access for VM instances without external IP addresses."
+  }
+]
